@@ -1,38 +1,64 @@
 use wasm_bindgen::prelude::*;
-use plotters::prelude::*;
-use crate::DrawResult;
+use num_integer::lcm;
+use sha3::{Digest, Sha3_256, Keccak256};
+use serde::{Serialize, Deserialize};
 
-///#[wasm_bindgen]
-/*
+#[derive(Serialize, Deserialize, Debug)]
+struct Point {
+  x: f32,
+  y: f32
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Line {
+  points: Vec<Point>,
+  valid: bool,
+  length: f32,
+  desc: String
+}
+
+#[wasm_bindgen]
+pub fn create_line (p1: &str, p2: &str, desc: &str) -> String {
+  let point1: Point = serde_json::from_str(p1).unwrap();
+  let point2: Point = serde_json::from_str(p2).unwrap();
+  let length = ((point1.x - point2.x) * (point1.x - point2.x) + (point1.y - point2.y) * (point1.y - point2.y)).sqrt();
+
+  let valid = if length == 0.0 { false } else { true };
+
+  let line = Line { points: vec![point1, point2], valid: valid, length: length, desc: desc.to_string() };
+
+  return serde_json::to_string(&line).unwrap();
+}
+
+#[wasm_bindgen]
 pub fn say(s: &str) -> String {
-  println!("The Rust function say() received {}", s);
-  let r = String::from("bye ");
+  let r = String::from("hello ");
   return r + s;
 }
-*/
- #[plotters]
- pub fn draw(canvas_id: &str, power: &i32) -> DrawResult<impl Fn((i32, i32)) -> Option<(f32, f32)>> {
-  let backend = CanvasBackend::new(canvas_id).expect("cannot find canvas");
-  let root = backend.into_drawing_area();
-  let font: FontDesc = ("sans-serif", 20.0).into();
 
-  root.fill(&WHITE)?;
+#[wasm_bindgen]
+pub fn obfusticate(s: String) -> String {
+  (&s).chars().map(|c| {
+    match c {
+      'A' ..= 'M' | 'a' ..= 'm' => ((c as u8) + 13) as char,
+      'N' ..= 'Z' | 'n' ..= 'z' => ((c as u8) - 13) as char,
+      _ => c
+    }
+  }).collect()
+}
 
-  let mut chart = ChartBuilder::on(&root)
-      .caption(format!("y=x^{}", power), font)
-      .x_label_area_size(30)
-      .y_label_area_size(30)
-      .build_ranged(-1f32..1f32, -1.2f32..1.2f32)?;
+#[wasm_bindgen]
+pub fn lowest_common_multiple(a: i32, b: i32) -> i32 {
+  let r = lcm(a, b);
+  return r;
+}
 
-  chart.configure_mesh().x_labels(3).y_labels(3).draw()?;
+#[wasm_bindgen]
+pub fn sha3_digest(v: Vec<u8>) -> Vec<u8> {
+  return Sha3_256::digest(&v).as_slice().to_vec();
+}
 
-  chart.draw_series(LineSeries::new(
-      (-50..=50)
-          .map(|x| x as f32 / 50.0)
-          .map(|x| (x, x.powf(power as f32))),
-      &RED,
-  ))?;
-
-  root.present()?;
-  return Ok(chart.into_coord_trans());
+#[wasm_bindgen]
+pub fn keccak_digest(s: &[u8]) -> Vec<u8> {
+  return Keccak256::digest(s).as_slice().to_vec();
 }
